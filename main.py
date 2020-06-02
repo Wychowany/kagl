@@ -6,6 +6,8 @@ from spacy.util import compounding
 from spacy.util import minibatch
 import sys
 
+params = open('input/params').readlines()
+
 
 class Data:
     @classmethod
@@ -30,16 +32,16 @@ class Models:
     def train_positive(cls):
         train_data = Data.read_train_data_set("positive")
         print("Start traning positive model")
-        cls.train(train_data, 'models/model_pos', n_iter=5)
+        cls.train(train_data, 'models/model_pos', int(sys.argv[1]))
 
     @classmethod
     def train_negative(cls):
         train_data = Data.read_train_data_set("negative")
         print("Start traning negative model")
-        cls.train(train_data, "models/model_neg", n_iter=5)
+        cls.train(train_data, "models/model_neg", int(sys.argv[1]))
 
     @classmethod
-    def train(cls, train_data, output_dir, n_iter=20):
+    def train(cls, train_data, output_dir, n_iter):
 
         nlp = spacy.blank("en")
         ner = nlp.create_pipe("ner")
@@ -54,11 +56,11 @@ class Models:
             for i in range(n_iter):
                 print("Iteration: " + str(i + 1) + "/" + str(n_iter))
                 random.shuffle(train_data)
-                batches = minibatch(train_data, size=compounding(4.0, 500.0, 1.001))
+                batches = minibatch(train_data, size=compounding(float(params[0]), float(params[1]), float(params[2])))
                 losses = {}
                 for batch in batches:
                     texts, annotations = zip(*batch)
-                    nlp.update(texts, annotations, drop=0.5, losses=losses)
+                    nlp.update(texts, annotations, drop=float(params[3]), losses=losses)
 
                 print("Losses", losses)
         cls.save_model(output_dir, nlp, 'st_ner')
@@ -93,10 +95,13 @@ class Predictor:
         return selected_text
 
 
-if len(sys.argv) > 1 and sys.argv[1] == "train":
+if len(sys.argv) > 1:
     print("START TRAINING MODELS")
     Models.train_negative()
     Models.train_positive()
+
+else:
+    print("USING PREVIOUS MODEL")
 
 selected_texts = []
 test_set = pandas.read_csv('input/test.csv')
